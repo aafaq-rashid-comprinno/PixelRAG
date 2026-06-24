@@ -11,6 +11,7 @@ Usage:
 
 import logging
 import os
+import pathlib
 from PIL import Image, ImageDraw, ImageFont
 
 logger = logging.getLogger(__name__)
@@ -118,7 +119,8 @@ class PixelQueryRenderer:
 
         If the image already exists on disk it is *not* re-rendered.
         """
-        out_path = os.path.join(self.output_dir, f"{example_id}_query.png")
+        safe_id = pathlib.Path(example_id).name
+        out_path = os.path.join(self.output_dir, f"{safe_id}_query.png")
         if os.path.exists(out_path):
             return out_path
 
@@ -270,7 +272,8 @@ class QueryImageTextRenderer:
         Returns:
             Path to the saved PNG.
         """
-        out_path = os.path.join(self.output_dir, f"{example_id}_query_card.png")
+        safe_id = pathlib.Path(example_id).name
+        out_path = os.path.join(self.output_dir, f"{safe_id}_query_card.png")
         if os.path.exists(out_path) and not force:
             return out_path
 
