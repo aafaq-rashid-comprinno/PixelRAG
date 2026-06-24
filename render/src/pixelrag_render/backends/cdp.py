@@ -271,6 +271,7 @@ async def capture_url(
     image_format: str = "jpeg",
     from_surface: bool = True,
     wait_network_idle: bool = False,
+    extract_text: bool = False,
 ) -> int:
     """Capture a URL as tiled images via direct CDP websocket.
 
@@ -365,6 +366,22 @@ async def capture_url(
     with open(tile_dir / "tiles.json", "w") as f:
         json.dump(manifest, f)
 
+    # Extract page text alongside tiles (hybrid output mode)
+    if extract_text:
+        try:
+            text_result = await _cdp_send(
+                ws,
+                msg_id_ref,
+                "Runtime.evaluate",
+                {"expression": "document.body.innerText", "returnByValue": True},
+            )
+            page_text = text_result.get("result", {}).get("value", "")
+            if page_text:
+                with open(tile_dir / "text.md", "w") as f:
+                    f.write(f"# {url}\n\n{page_text}\n")
+        except Exception:
+            pass  # text extraction is best-effort
+
     return len(tiles)
 
 
@@ -401,6 +418,7 @@ async def _drain_queue(
     image_format: str,
     from_surface: bool,
     wait_network_idle: bool,
+    extract_text: bool,
     worker_id: int,
     stats: dict,
     results: list,
@@ -433,6 +451,7 @@ async def _drain_queue(
                 image_format=image_format,
                 from_surface=from_surface,
                 wait_network_idle=wait_network_idle,
+                extract_text=extract_text,
             )
             stats["done"] += 1
             elapsed = time.monotonic() - t0
@@ -454,6 +473,7 @@ async def _worker(
     image_format: str,
     from_surface: bool,
     wait_network_idle: bool,
+    extract_text: bool,
     worker_id: int,
     stats: dict,
     results: list,
@@ -497,6 +517,7 @@ async def _worker(
             image_format,
             from_surface,
             wait_network_idle,
+            extract_text,
             worker_id,
             stats,
             results,
@@ -549,6 +570,7 @@ async def _run_batch(
     image_format: str,
     from_surface: bool,
     wait_network_idle: bool,
+    extract_text: bool,
     stems: list[str] | None,
     chrome_path: str,
 ) -> list[Path]:
@@ -574,6 +596,7 @@ async def _run_batch(
             image_format,
             from_surface,
             wait_network_idle,
+            extract_text,
             wid,
             stats,
             results,
@@ -598,6 +621,7 @@ async def _attached_worker(
     image_format: str,
     from_surface: bool,
     wait_network_idle: bool,
+    extract_text: bool,
     worker_id: int,
     stats: dict,
     results: list,
@@ -635,6 +659,7 @@ async def _attached_worker(
             image_format,
             from_surface,
             wait_network_idle,
+            extract_text,
             worker_id,
             stats,
             results,
@@ -662,6 +687,7 @@ async def _run_batch_attached(
     image_format: str,
     from_surface: bool,
     wait_network_idle: bool,
+    extract_text: bool,
     stems: list[str] | None,
     cdp_url: str,
 ) -> list[Path]:
@@ -692,6 +718,7 @@ async def _run_batch_attached(
             image_format,
             from_surface,
             wait_network_idle,
+            extract_text,
             wid,
             stats,
             results,
@@ -718,6 +745,7 @@ def render_urls(
     image_format: str = "jpeg",
     from_surface: bool = True,
     wait_network_idle: bool = False,
+    extract_text: bool = False,
     turbo: bool | None = None,
     chrome_path: str | None = None,
     cdp_url: str | None = None,
@@ -779,6 +807,7 @@ def render_urls(
                 image_format,
                 from_surface,
                 wait_network_idle,
+                extract_text,
                 stems,
                 cdp_url,
             )
@@ -839,6 +868,7 @@ def render_urls(
             image_format,
             from_surface,
             wait_network_idle,
+            extract_text,
             stems,
             chrome,
         )
