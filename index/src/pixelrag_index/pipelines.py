@@ -28,6 +28,10 @@ def build(config: dict, limit: int | None = None, force: bool = False) -> Path:
     tiles_dir = output / "tiles"
     embeddings_dir = output / "embeddings"
     ingest_cfg = config.get("ingest", {})
+    # Default to waiting for network idle — most modern pages are JS-rendered
+    # SPAs that produce blank/incomplete tiles without this. Users can opt out
+    # with `ingest: {wait_network_idle: false}` in their pixelrag.yaml.
+    ingest_cfg.setdefault("wait_network_idle", True)
     embed_cfg = config.get("embed", {})
     device = embed_cfg.get("device", "cpu")
 
