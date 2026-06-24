@@ -26,7 +26,7 @@ _VALID = {
 
 # Known keys per section (for typo detection)
 _KNOWN_KEYS = {
-    "source": {"type", "path", "urls_file", "zim_path", "preset"},
+    "source": {"type", "path", "urls_file", "zim_path", "preset", "start_url", "max_pages", "max_depth", "stay_on_domain", "exclude_patterns"},
     "embed": {"model", "device", "gpu_ids", "backend", "instruction", "batch_size"},
     "ingest": {"backend", "quality", "tile_height", "wait_network_idle", "viewport_width", "workers"},
 }
