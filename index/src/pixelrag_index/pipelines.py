@@ -17,6 +17,9 @@ def build(config: dict, limit: int | None = None, force: bool = False) -> Path:
     Stages: source → ingest (render) → chunk → embed → build index
     """
     import itertools
+    import time as _time
+
+    _build_start = _time.time()
 
     source = make_source(config)
     try:
@@ -260,6 +263,7 @@ def build(config: dict, limit: int | None = None, force: bool = False) -> Path:
     total_vectors = sum(
         np.load(f, mmap_mode="r")["embeddings"].shape[0] for f in npz_files
     )
+    n_vectors = total_vectors
     nlist = min(4096, max(1, total_vectors // 40))
     logger.info(
         "Stage 4/4: Building FAISS index (%d vectors, nlist=%d)...",
@@ -283,6 +287,15 @@ def build(config: dict, limit: int | None = None, force: bool = False) -> Path:
     )
 
     logger.info("Index built at %s", output)
+
+    # Summary
+    elapsed = _time.time() - _build_start
+    mins, secs = divmod(int(elapsed), 60)
+    n_docs = len(articles)
+    logger.info(
+        "Done in %dm %ds (%d docs → %d vectors)",
+        mins, secs, n_docs, n_vectors,
+    )
     return output
 
 
