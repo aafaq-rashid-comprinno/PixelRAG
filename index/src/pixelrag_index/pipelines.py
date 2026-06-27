@@ -51,6 +51,7 @@ def build(config: dict, limit: int | None = None, force: bool = False) -> Path:
     url_docs = []
     pdf_docs = []
     image_docs = []
+    text_docs = []
     articles = []  # id → metadata mapping for serve
 
     for doc in docs:
@@ -67,6 +68,8 @@ def build(config: dict, limit: int | None = None, force: bool = False) -> Path:
             url_docs.append((idx, doc))
         elif doc.path and doc.path.lower().endswith(".pdf"):
             pdf_docs.append((idx, doc))
+        elif doc.path and (doc.metadata or {}).get("type") == "text":
+            text_docs.append((idx, doc))
         elif doc.path:
             image_docs.append((idx, doc))
 
@@ -88,6 +91,46 @@ def build(config: dict, limit: int | None = None, force: bool = False) -> Path:
         logger.info(
             "  Rendered %d URLs (%d skipped, already exist)", len(new_url_docs), skipped
         )
+
+    # Render text files (.md, .txt) — convert to styled HTML, then render via CDP
+    if text_docs:
+        import html as html_mod
+        import tempfile
+
+        _HTML_TEMPLATE = (
+            '<html><head><meta charset="utf-8"><style>'
+            "body { font-family: -apple-system, system-ui, sans-serif; "
+            "max-width: 860px; margin: 40px auto; padding: 20px; line-height: 1.7; "
+            "color: #1a1a1a; } "
+            "pre, code { background: #f4f4f5; padding: 2px 6px; border-radius: 4px; "
+            "font-size: 14px; } "
+            "pre { padding: 16px; overflow-x: auto; white-space: pre-wrap; } "
+            "h1,h2,h3 { color: #111; } "
+            "table { border-collapse: collapse; width: 100%; } "
+            "th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }"
+            "</style></head><body>"
+        )
+        tmp_dir = tempfile.mkdtemp(prefix="pixelrag_text_")
+        text_urls = []
+        text_stems = []
+
+        for idx, doc in text_docs:
+            if (tiles_dir / f"{idx}.png.tiles" / "tiles.json").exists():
+                continue
+            content = Path(doc.path).read_text(errors="replace")
+            escaped = html_mod.escape(content)
+            html_content = f"{_HTML_TEMPLATE}<pre>{escaped}</pre></body></html>"
+            html_path = Path(tmp_dir) / f"{idx}.html"
+            html_path.write_text(html_content)
+            text_urls.append(f"file://{html_path.resolve()}")
+            text_stems.append(str(idx))
+
+        if text_urls:
+            text_ingest = {k: v for k, v in ingest_cfg.items() if k != "backend"}
+            render_urls(
+                text_urls, str(tiles_dir), backend="cdp", stems=text_stems, **text_ingest
+            )
+        logger.info("  Rendered %d text files (.md/.txt)", len(text_docs))
 
     # Render PDFs
     for idx, doc in pdf_docs:
