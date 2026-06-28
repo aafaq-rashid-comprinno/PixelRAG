@@ -122,7 +122,9 @@ class BM25Index:
         self.df = defaultdict(int, data["df"])
         self.tf = {int(k): v for k, v in data["tf"].items()}
         self._loaded = True
-        logger.info("BM25 index loaded: %d docs, %d terms", self.doc_count, len(self.df))
+        logger.info(
+            "BM25 index loaded: %d docs, %d terms", self.doc_count, len(self.df)
+        )
         return True
 
 
@@ -169,7 +171,9 @@ def build_text_index_from_articles(
         title = article.get("title", "")
         url = article.get("url", "")
         # Extract meaningful text from URL path
-        url_text = url.split("/")[-1].replace("_", " ").replace("%20", " ") if url else ""
+        url_text = (
+            url.split("/")[-1].replace("_", " ").replace("%20", " ") if url else ""
+        )
         text = f"{title} {url_text}"
         if text.strip():
             texts[vid] = text

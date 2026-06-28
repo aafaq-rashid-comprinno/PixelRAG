@@ -13,13 +13,15 @@ from pixelrag_serve.hybrid import BM25Index, reciprocal_rank_fusion, load_or_bui
 @pytest.fixture
 def bm25():
     idx = BM25Index()
-    idx.build_from_texts({
-        0: "Python programming language created by Guido van Rossum",
-        1: "Machine learning neural networks deep learning",
-        2: "Albert Einstein theory of relativity physics Nobel Prize",
-        3: "JavaScript React frontend web development",
-        4: "Python snake reptile biology animal",
-    })
+    idx.build_from_texts(
+        {
+            0: "Python programming language created by Guido van Rossum",
+            1: "Machine learning neural networks deep learning",
+            2: "Albert Einstein theory of relativity physics Nobel Prize",
+            3: "JavaScript React frontend web development",
+            4: "Python snake reptile biology animal",
+        }
+    )
     return idx
 
 
@@ -93,9 +95,18 @@ def test_rrf_single_list():
 def test_load_or_build_from_articles(tmp_path):
     """Integration: build BM25 from articles.json and search."""
     articles = [
-        {"title": "Python (programming language)", "url": "https://en.wikipedia.org/wiki/Python_(programming_language)"},
-        {"title": "Albert Einstein", "url": "https://en.wikipedia.org/wiki/Albert_Einstein"},
-        {"title": "Machine learning", "url": "https://en.wikipedia.org/wiki/Machine_learning"},
+        {
+            "title": "Python (programming language)",
+            "url": "https://en.wikipedia.org/wiki/Python_(programming_language)",
+        },
+        {
+            "title": "Albert Einstein",
+            "url": "https://en.wikipedia.org/wiki/Albert_Einstein",
+        },
+        {
+            "title": "Machine learning",
+            "url": "https://en.wikipedia.org/wiki/Machine_learning",
+        },
     ]
     articles_path = tmp_path / "articles.json"
     articles_path.write_text(json.dumps(articles))
