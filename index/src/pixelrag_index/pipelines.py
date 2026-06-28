@@ -217,7 +217,10 @@ def main():
     )
     parser.add_argument("--output", "-o", default=None, help="Output directory")
     parser.add_argument(
-        "--device", default=None, choices=["cpu", "cuda"], help="Embedding device"
+        "--device",
+        default=None,
+        choices=["auto", "cpu", "mps", "cuda"],
+        help="Embedding device (default: from config; auto-detects cuda/mps/cpu)",
     )
     parser.add_argument(
         "--limit", "-n", type=int, default=None, help="Max documents to process"

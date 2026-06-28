@@ -38,6 +38,17 @@ def test_pixelrag_unknown_stage_errors():
     assert "unknown" in (r.stdout + r.stderr).lower()
 
 
+def test_index_build_device_choices():
+    """CLI must offer auto/mps/cuda/cpu device choices."""
+    r = _run("pixelrag", "index", "build", "--help")
+    if r.returncode != 0 and "not installed" in (r.stdout + r.stderr):
+        import pytest
+
+        pytest.skip("index stage not installed")
+    assert r.returncode == 0
+    assert "{auto,cpu,mps,cuda}" in r.stdout
+
+
 def test_light_imports():
     # Core install must import without torch.
     import pixelrag  # noqa: F401
