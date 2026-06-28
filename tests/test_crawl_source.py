@@ -35,9 +35,7 @@ def _mock_links(url):
 @pytest.fixture
 def crawl_source():
     with patch("pixelrag_index.sources.crawl._fetch_links", side_effect=_mock_links):
-        yield lambda **kwargs: CrawlSource(
-            start_url="https://example.com/", **kwargs
-        )
+        yield lambda **kwargs: CrawlSource(start_url="https://example.com/", **kwargs)
 
 
 def test_crawl_discovers_links(crawl_source):
@@ -99,6 +97,7 @@ def test_crawl_filters_feeds_and_api(crawl_source):
 
 def test_url_not_mangled_by_config():
     """make_source must not mangle URLs with Path().expanduser()."""
+    pytest.importorskip("yaml")
     from pixelrag_index.config import make_source
 
     config = {

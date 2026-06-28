@@ -31,7 +31,9 @@ def _fetch_links(url: str, timeout: int = 10) -> list[str]:
     import urllib.request
 
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "PixelRAG-Crawler/1.0"})
+        req = urllib.request.Request(
+            url, headers={"User-Agent": "PixelRAG-Crawler/1.0"}
+        )
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             html = resp.read().decode("utf-8", errors="replace")
     except Exception:
@@ -70,11 +72,34 @@ class CrawlSource(Source):
                 return True
         # Skip non-HTML resources
         path = urlparse(url).path.lower()
-        skip_exts = (".png", ".jpg", ".jpeg", ".gif", ".svg", ".pdf", ".css", ".js", ".ico", ".woff", ".woff2", ".mp4", ".zip")
+        skip_exts = (
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".gif",
+            ".svg",
+            ".pdf",
+            ".css",
+            ".js",
+            ".ico",
+            ".woff",
+            ".woff2",
+            ".mp4",
+            ".zip",
+        )
         if any(path.endswith(ext) for ext in skip_exts):
             return True
         # Skip common non-content paths
-        skip_paths = ("/feed", "/wp-json", "/xmlrpc", "/wp-admin", "/wp-login", "/wp-content", "/trackback", "/comments/feed")
+        skip_paths = (
+            "/feed",
+            "/wp-json",
+            "/xmlrpc",
+            "/wp-admin",
+            "/wp-login",
+            "/wp-content",
+            "/trackback",
+            "/comments/feed",
+        )
         if any(s in url for s in skip_paths):
             return True
         # Skip query-heavy URLs (likely API/dynamic)
