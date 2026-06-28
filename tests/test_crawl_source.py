@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "index" / "src"))
-from pixelrag_index.sources.crawl import CrawlSource, _fetch_links
+from pixelrag_index.sources.crawl import CrawlSource
 
 
 def _mock_links(url):
