@@ -39,9 +39,9 @@ COPY src/ ./src/
 COPY serve/ ./serve/
 COPY embed/ ./embed/
 
-# Install serve extra (FastAPI, uvicorn, FAISS, torch-cpu, transformers)
+# Install serve extra + torchvision (needed by Qwen3-VL processor)
 RUN echo 'cef-capi-py ; sys_platform == "never"' > /tmp/overrides.txt && \
-    uv pip install --system --no-cache -e ".[serve]" --override /tmp/overrides.txt && \
+    uv pip install --system --no-cache -e ".[serve]" torchvision --override /tmp/overrides.txt && \
     rm /tmp/overrides.txt
 
 # HuggingFace model cache
