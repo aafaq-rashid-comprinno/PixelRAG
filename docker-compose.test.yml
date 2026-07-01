@@ -1,0 +1,45 @@
+# docker-compose.test.yml — Smoke test with minimal fixture data
+#
+# Validates that containers start, respond to healthchecks, and serve requests
+# using a tiny test index (no GPU, no 216G data, no model download needed).
+#
+# Usage:
+#   docker compose -f docker-compose.test.yml up -d
+#   curl http://localhost:30001/health
+#   curl http://localhost:30001/status
+#   docker compose -f docker-compose.test.yml down
+
+services:
+  serve:
+    build:
+      context: .
+      dockerfile: docker/serve/Dockerfile
+    ports:
+      - "30001:30001"
+    volumes:
+      - ./docker/test-fixtures/data/index:/data/index:ro
+      - ./docker/test-fixtures/data/tiles:/data/tiles:ro
+      - ./docker/test-fixtures/data/articles.json:/data/articles.json:ro
+      - model-cache:/models
+    environment:
+      - HF_HOME=/models
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:30001/health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 120s
+      retries: 5
+
+  nginx:
+    build:
+      context: ./docker/nginx
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      serve:
+        condition: service_healthy
+
+volumes:
+  model-cache:
+    name: pixelrag-models-test

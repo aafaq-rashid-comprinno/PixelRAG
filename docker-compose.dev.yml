@@ -1,0 +1,53 @@
+# docker-compose.dev.yml — Development overrides
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Differences from production:
+#   - Source code mounted for hot-reload (uvicorn --reload)
+#   - CORS open to all origins
+#   - No resource limits
+#   - Debug logging enabled
+
+services:
+  serve:
+    build:
+      context: .
+      dockerfile: docker/serve/Dockerfile
+    volumes:
+      - ./serve/src/pixelrag_serve:/app/serve/src/pixelrag_serve:ro
+      - ./src/pixelrag:/app/src/pixelrag:ro
+      - ${INDEX_DIR:-./data/index}:/data/index:ro
+      - ${TILES_DIR:-./data/tiles}:/data/tiles:ro
+      - ${ARTICLES_JSON:-./data/articles.json}:/data/articles.json:ro
+      - model-cache:/models
+    command:
+      - "serve"
+      - "--index-dir"
+      - "/data/index"
+      - "--tiles-dir"
+      - "/data/tiles"
+      - "--articles-json"
+      - "/data/articles.json"
+      - "--device"
+      - "cpu"
+      - "--port"
+      - "30001"
+      - "--reload"
+    environment:
+      - LOG_LEVEL=DEBUG
+      - HF_HOME=/models
+
+  agent:
+    volumes:
+      - ./web/agent-server.mjs:/app/agent-server.mjs:ro
+    environment:
+      - ALLOWED_ORIGIN=*
+      - PIXELRAG_SEARCH_URL=http://serve:30001
+      - RL_PER_IP=999
+      - RL_GLOBAL_DAILY=9999
+      - RL_MAX_CONCURRENT=10
+
+  nginx:
+    ports:
+      - "8080:80"

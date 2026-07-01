@@ -1,0 +1,68 @@
+# .dockerignore — keep build context lean
+# The PixelRAG repo has multi-GB data dirs that must never enter the Docker build.
+
+# Virtual environments & caches
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Data & model artifacts (mounted as volumes, not baked into images)
+data/
+tiles/
+embeddings/
+index/
+*.faiss
+*.npz
+*.npy
+*.pt
+*.bin
+*.safetensors
+
+# Training data & checkpoints
+train/
+eval/
+
+# Git & IDE
+.git/
+.github/
+.gitattributes
+# Keep README.md (needed by pyproject.toml) but exclude other docs
+RELEASING.md
+CLAUDE.md
+
+# Node.js (web frontend — deployed separately via Vercel)
+web/node_modules/
+web/.next/
+web/out/
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs & assets (not needed in containers)
+docs/
+assets/
+demos/
+history/
+chromium/
+
+# Secrets
+.env
+.env.local
+*.pem
+*.key
+
+# Large patch files
+*.diff
+
+# Lock files (we use uv.lock, not pip)
+package-lock.json
+
+# Misc
+tmp/
+logs/
+*.log

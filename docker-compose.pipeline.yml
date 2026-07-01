@@ -1,0 +1,97 @@
+# docker-compose.pipeline.yml — Offline indexing pipeline
+#
+# Runs the render → chunk → embed → build-index stages.
+# These are one-shot jobs, not long-running services.
+#
+# Usage:
+#   # Render URLs to tiles
+#   docker compose -f docker-compose.pipeline.yml run --rm render \
+#       https://example.com --output /data/tiles
+#
+#   # Render from a URL list file
+#   docker compose -f docker-compose.pipeline.yml run --rm render \
+#       $(cat urls.txt | tr '\n' ' ') --output /data/tiles --workers 4
+#
+#   # Chunk tiles into model-sized pieces
+#   docker compose -f docker-compose.pipeline.yml run --rm embed \
+#       chunk --shard-dir /data/tiles --workers 8
+#
+#   # Embed chunks (GPU)
+#   docker compose -f docker-compose.pipeline.yml run --rm embed \
+#       embed --shard-dir /data/tiles --output-dir /data/embeddings --gpu-ids 0
+#
+#   # Build FAISS index
+#   docker compose -f docker-compose.pipeline.yml run --rm embed \
+#       build-index --embeddings-dir /data/embeddings --output-dir /data/index
+#
+#   # Full end-to-end pipeline from pixelrag.yaml
+#   docker compose -f docker-compose.pipeline.yml run --rm index-build
+#
+#   # Render a PDF
+#   docker compose -f docker-compose.pipeline.yml run --rm render \
+#       /data/input/paper.pdf --output /data/tiles --dpi 200
+
+services:
+  # ─── Render (document → tiles) ──────────────────────────────────────────
+  render:
+    build:
+      context: .
+      dockerfile: docker/render/Dockerfile
+    volumes:
+      - ${TILES_DIR:-./data/tiles}:/data/tiles
+      - ${INPUT_DIR:-./data/input}:/data/input:ro
+    shm_size: "2gb"
+    # Override for batch rendering:
+    # command: ["https://...", "--output", "/data/tiles", "--workers", "4"]
+
+  # ─── Embed (tiles → vectors, CUDA) ──────────────────────────────────────
+  embed:
+    build:
+      context: .
+      dockerfile: docker/embed/Dockerfile
+    volumes:
+      - ${TILES_DIR:-./data/tiles}:/data/tiles
+      - ${EMBEDDINGS_DIR:-./data/embeddings}:/data/embeddings
+      - model-cache:/models
+    environment:
+      - HF_HOME=/models
+      - TRANSFORMERS_CACHE=/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # Override for specific stage:
+    # command: ["embed", "--shard-dir", "/data/tiles", "--output-dir", "/data/embeddings"]
+
+  # ─── Full index build (orchestrator) ─────────────────────────────────────
+  index-build:
+    build:
+      context: .
+      dockerfile: docker/embed/Dockerfile
+    volumes:
+      - ${TILES_DIR:-./data/tiles}:/data/tiles
+      - ${EMBEDDINGS_DIR:-./data/embeddings}:/data/embeddings
+      - ${INDEX_DIR:-./data/index}:/data/index
+      - ${CONFIG_FILE:-./pixelrag.yaml}:/app/pixelrag.yaml:ro
+      - ${INPUT_DIR:-./data/input}:/data/input:ro
+      - model-cache:/models
+    shm_size: "2gb"
+    environment:
+      - HF_HOME=/models
+      - TRANSFORMERS_CACHE=/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    entrypoint: ["pixelrag"]
+    command: ["index", "build", "--config", "/app/pixelrag.yaml"]
+
+volumes:
+  model-cache:
+    name: pixelrag-models

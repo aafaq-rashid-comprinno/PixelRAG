@@ -1,0 +1,95 @@
+# docker-compose.yml — PixelRAG runtime stack
+#
+# Brings up the production-like search API, agent, and nginx proxy.
+# The indexing pipeline runs separately via docker-compose.pipeline.yml.
+#
+# Quick start:
+#   cp .env.example .env          # configure paths
+#   docker compose up -d          # start all runtime services
+#   curl http://localhost/health   # verify
+#
+# Prerequisites:
+#   - Pre-built FAISS index (run the pipeline first, or download from HuggingFace)
+#   - articles.json mapping file
+#   - Tiles directory (for tile serving)
+#
+# Blue-green deploy:
+#   Scale serve to 2 replicas on different ports, update nginx upstream, reload.
+
+x-common: &common
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "5"
+
+services:
+  # ─── Search API (FAISS + Qwen3-VL query embedding) ───────────────────────
+  serve:
+    <<: *common
+    build:
+      context: .
+      dockerfile: docker/serve/Dockerfile
+    container_name: pixelrag-serve
+    ports:
+      - "${SERVE_PORT:-30001}:30001"
+    volumes:
+      - ${INDEX_DIR:-./data/index}:/data/index:ro
+      - ${TILES_DIR:-./data/tiles}:/data/tiles:ro
+      - ${ARTICLES_JSON:-./data/articles.json}:/data/articles.json:ro
+      - model-cache:/models
+    environment:
+      - HF_HOME=/models
+      - TRANSFORMERS_CACHE=/models
+    deploy:
+      resources:
+        limits:
+          memory: ${SERVE_MEMORY_LIMIT:-250g}
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:30001/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 180s
+      retries: 3
+
+  # ─── Agent (Claude chat backend, SSE) ────────────────────────────────────
+  agent:
+    <<: *common
+    build:
+      context: .
+      dockerfile: docker/agent/Dockerfile
+    container_name: pixelrag-agent
+    ports:
+      - "${AGENT_PORT:-30010}:30010"
+    environment:
+      - AGENT_PORT=30010
+      - PIXELRAG_SEARCH_URL=http://serve:30001
+      - CHAT_MAX_BUDGET_USD=${CHAT_MAX_BUDGET_USD:-2.00}
+      - CHAT_THINKING_TOKENS=${CHAT_THINKING_TOKENS:-2000}
+      - ALLOWED_ORIGIN=${ALLOWED_ORIGIN:-*}
+      - RL_PER_IP=${RL_PER_IP:-12}
+      - RL_GLOBAL_DAILY=${RL_GLOBAL_DAILY:-500}
+      - RL_MAX_CONCURRENT=${RL_MAX_CONCURRENT:-3}
+    depends_on:
+      serve:
+        condition: service_healthy
+
+  # ─── Nginx reverse proxy ─────────────────────────────────────────────────
+  nginx:
+    <<: *common
+    build:
+      context: ./docker/nginx
+      dockerfile: Dockerfile
+    container_name: pixelrag-nginx
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    depends_on:
+      serve:
+        condition: service_healthy
+      agent:
+        condition: service_started
+
+volumes:
+  model-cache:
+    name: pixelrag-models
